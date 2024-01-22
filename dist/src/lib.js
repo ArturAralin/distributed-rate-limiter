@@ -20,6 +20,7 @@ class DistributedRateLimiterJob {
     redis;
     jobs = {};
     localJobId = 0;
+    waitingJobs = 0;
     constructor(keyPrefix, key, redis) {
         this.keyPrefix = keyPrefix;
         this.key = key;
@@ -35,6 +36,7 @@ class DistributedRateLimiterJob {
     async run(job) {
         if (!job.id) {
             job.id = ++this.localJobId;
+            this.waitingJobs += 1;
         }
         this.jobs[job.id] = job;
         const evalResult = await this.redis.eval(`
@@ -53,11 +55,11 @@ class DistributedRateLimiterJob {
     end
   `, 0);
         const allowed = JSON.parse(evalResult);
-        console.log('allowed', allowed);
         if (!allowed) {
             job.state = 'delayed';
             return job.promise;
         }
+        this.waitingJobs = Math.max(this.waitingJobs - 1, 0);
         this.jobs[job.id].state = 'in_progress';
         try {
             job.resolve(await job.callback());
@@ -102,12 +104,8 @@ class DistributedRateLimiter {
     }
     async registerLimiter(params) {
         if (!this.initialized) {
-            console.log('subscribe');
             await this.pubSub.config('SET', 'notify-keyspace-events', 'Ex');
             await this.pubSub.subscribe("__keyevent@0__:expired");
-            this.pubSub.on('message', (...a) => {
-                console.log('a', a);
-            });
             this.pubSub.on('message', this.onRedisExpireMessage.bind(this));
             this.initialized = true;
         }

@@ -49,17 +49,16 @@ async function test() {
         interval: 1000,
         rate: 3,
     });
-    await rl.run('test_key', async () => {
-        await testReq();
-    });
-    await rl.run('test_key', async () => {
-        await testReq();
-    });
-    await rl.run('test_key', async () => {
-        await testReq();
-    });
-    await rl.run('test_key', async () => {
-        await testReq();
-    });
+    const intervalId = setInterval(async () => {
+        await rl.run('test_key', async () => {
+            await testReq();
+        });
+        await rl.run('test_key', async () => {
+            await testReq();
+        });
+    }, 100);
+    setTimeout(() => {
+        clearInterval(intervalId);
+    }, 1000);
 }
 test();
