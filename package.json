@@ -1,7 +1,7 @@
 {
   "name": "semaphore",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/src/lib.js",
   "license": "MIT",
   "scripts": {
     "build": "tsc"
